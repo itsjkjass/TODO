@@ -15,12 +15,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.List
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.rounded.DateRange
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.List
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material3.NavigationBarItemDefaults
+import com.pacemate.app.ui.screens.MiniTimerBar
+import com.pacemate.app.ui.theme.Motion
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -92,14 +102,14 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private data class Tab(val label: String, val icon: ImageVector)
+private data class Tab(val label: String, val selected: ImageVector, val unselected: ImageVector)
 
 private val TABS = listOf(
-    Tab("Today", Icons.Default.Home),
-    Tab("Plan", Icons.Default.DateRange),
-    Tab("Goals", Icons.Default.Star),
-    Tab("Log", Icons.Default.List),
-    Tab("Settings", Icons.Default.Settings),
+    Tab("Today", Icons.Rounded.Home, Icons.Outlined.Home),
+    Tab("Plan", Icons.Rounded.DateRange, Icons.Outlined.DateRange),
+    Tab("Goals", Icons.Rounded.Star, Icons.Outlined.Star),
+    Tab("Log", Icons.Rounded.List, Icons.Outlined.List),
+    Tab("Settings", Icons.Rounded.Settings, Icons.Outlined.Settings),
 )
 
 @Composable
@@ -121,14 +131,27 @@ private fun Root(vm: AppViewModel) {
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
             if (state.onboarded) {
-                NavigationBar {
-                    TABS.forEachIndexed { i, t ->
-                        NavigationBarItem(
-                            selected = tab == i,
-                            onClick = { tab = i },
-                            icon = { Icon(t.icon, t.label) },
-                            label = { Text(t.label) },
-                        )
+                Column {
+                    val timer = state.activeTimer
+                    val running = timer?.let { t -> state.sessions.firstOrNull { it.id == t.sessionId } }
+                    if (timer != null && running != null && tab != 0) {
+                        MiniTimerBar(vm, running, timer) { tab = 0 }
+                    }
+                    NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
+                        TABS.forEachIndexed { i, t ->
+                            NavigationBarItem(
+                                selected = tab == i,
+                                onClick = { tab = i },
+                                // The visible label names the tab, so the icon is decorative.
+                                icon = { Icon(if (tab == i) t.selected else t.unselected, contentDescription = null) },
+                                label = { Text(t.label) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                ),
+                            )
+                        }
                     }
                 }
             }
@@ -138,23 +161,26 @@ private fun Root(vm: AppViewModel) {
             if (!state.onboarded) {
                 OnboardingScreen(vm)
             } else {
-                when (tab) {
-                    0 -> TodayScreen(vm)
-                    1 -> PlanScreen(vm)
-                    2 -> GoalsScreen(vm)
-                    3 -> LogScreen(vm)
-                    else -> SettingsScreen(vm)
+                Crossfade(targetState = tab, animationSpec = tween(Motion.MEDIUM), label = "tabs") { t ->
+                    when (t) {
+                        0 -> TodayScreen(vm)
+                        1 -> PlanScreen(vm)
+                        2 -> GoalsScreen(vm)
+                        3 -> LogScreen(vm)
+                        else -> SettingsScreen(vm)
+                    }
                 }
             }
             busy?.let { text ->
                 Surface(
                     modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(12.dp),
-                    tonalElevation = 6.dp,
+                    color = MaterialTheme.colorScheme.inverseSurface,
+                    contentColor = MaterialTheme.colorScheme.inverseOnSurface,
                     shadowElevation = 6.dp,
-                    shape = MaterialTheme.shapes.medium,
+                    shape = MaterialTheme.shapes.large,
                 ) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
+                        CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp, color = MaterialTheme.colorScheme.inversePrimary)
                         Column(Modifier.padding(start = 12.dp)) { Text(text) }
                     }
                 }

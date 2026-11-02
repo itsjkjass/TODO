@@ -1,19 +1,25 @@
 package com.pacemate.app.ui.screens
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -25,10 +31,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.unit.dp
 import com.pacemate.app.ui.AppViewModel
+import com.pacemate.app.ui.PaceCard
+import com.pacemate.app.ui.ScreenHeader
 import com.pacemate.app.ui.SectionCard
+import com.pacemate.app.ui.SectionLabel
+import com.pacemate.app.ui.theme.Space
 
 @Composable
 fun SettingsScreen(vm: AppViewModel) {
@@ -36,41 +47,64 @@ fun SettingsScreen(vm: AppViewModel) {
     var reminders by remember { mutableStateOf(vm.settings.startReminders) }
     var confirmReset by remember { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState())) {
-        Spacer(Modifier.height(8.dp))
-        Text("Settings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text(
-            "Changes to your routine and preferences are applied when you tap \"Save & re-plan\".",
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Button(onClick = { vm.replan(showMessage = true) }, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = Space.gutter),
+        verticalArrangement = Arrangement.spacedBy(Space.xs),
+    ) {
+        ScreenHeader(title = "Settings", eyebrow = "PaceMate", subtitle = "Changes to your day and preferences apply when you re-plan.")
+
+        Button(
+            onClick = { vm.replan(showMessage = true) },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Icon(Icons.Rounded.Refresh, contentDescription = null)
+            Spacer(Modifier.width(Space.sm))
             Text("Save & re-plan")
         }
 
+        SectionLabel("Assistant")
         AiSettingsCard(vm, autoSave = false)
 
-        SectionCard("Notifications") {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Remind me 2 minutes before each task", Modifier.weight(1f))
-                Switch(reminders, { reminders = it; vm.setReminders(it) })
+        SectionLabel("Notifications")
+        PaceCard {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .toggleable(value = reminders, role = Role.Switch) { reminders = it; vm.setReminders(it) },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Heads-up before each block", style = MaterialTheme.typography.bodyLarge)
+                    Text("A reminder 2 minutes before a planned task starts.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                // The whole row is the toggle; the switch only shows its state.
+                Switch(checked = reminders, onCheckedChange = null)
             }
             Text(
-                "The \"time's up\" alert for a running task timer is always on.",
+                "The \"time's up\" alert for a running timer is always on.",
                 style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        Text("Your day", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 12.dp))
+        SectionLabel("Your day")
         DescribeDayCard(vm)
         RoutineEditor(state.profile.routine) { r -> vm.updateProfile { it.copy(routine = r) } }
 
-        Text("Preferences", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 12.dp))
+        SectionLabel("Preferences")
         PreferencesEditor(state.profile.preferences) { p -> vm.updateProfile { it.copy(preferences = p) } }
 
-        OutlinedButton(onClick = { confirmReset = true }, modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
-            Text("Start over (delete all data)")
+        SectionLabel("Data")
+        SectionCard("Start over", subtitle = "Deletes your routine, goals, plan and time log from this phone.") {
+            OutlinedButton(
+                onClick = { confirmReset = true },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) { Text("Delete all data") }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(Space.xxl))
     }
 
     if (confirmReset) {
@@ -78,7 +112,11 @@ fun SettingsScreen(vm: AppViewModel) {
             onDismissRequest = { confirmReset = false },
             title = { Text("Delete everything?") },
             text = { Text("Your routine, goals, plan and time log will be deleted. This can't be undone.") },
-            confirmButton = { TextButton(onClick = { vm.resetEverything(); confirmReset = false }) { Text("Delete") } },
+            confirmButton = {
+                TextButton(onClick = { vm.resetEverything(); confirmReset = false }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
             dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel") } },
         )
     }

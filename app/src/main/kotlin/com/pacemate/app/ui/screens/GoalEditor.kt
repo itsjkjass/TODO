@@ -75,7 +75,7 @@ fun GoalEditor(vm: AppViewModel, existing: Goal?, onClose: () -> Unit) {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        SectionCard(if (existing == null) "New goal" else "Edit goal", subtitle = "Something you want to get done in the near future.") {
+        SectionCard("About the goal", subtitle = "Something you want to get done in the near future.") {
             OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth(), label = { Text("What do you want to achieve?") }, singleLine = true)
             OutlinedTextField(
                 details, { details = it }, Modifier.fillMaxWidth(), minLines = 2,
