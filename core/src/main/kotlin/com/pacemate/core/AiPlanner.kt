@@ -33,9 +33,9 @@ enum class AiProvider(
     GROQ(
         label = "Groq (free tier)",
         baseUrl = "https://api.groq.com/openai/v1",
-        defaultModel = "llama-3.3-70b-versatile",
+        defaultModel = "openai/gpt-oss-120b",
         keyUrl = "https://console.groq.com/keys",
-        modelHint = "Cheapest: llama-3.1-8b-instant. Better plans: llama-3.3-70b-versatile.",
+        modelHint = "Works on the free tier: openai/gpt-oss-120b (or the lighter openai/gpt-oss-20b).",
     ),
     KIMI(
         label = "Kimi (Moonshot)",
@@ -173,7 +173,8 @@ class AiPlanner(
         val body = buildJsonObject {
             put("model", model)
             put("temperature", 0.3)
-            put("max_tokens", 4096)
+            // gpt-oss models reason before answering; leave room so the JSON isn't cut off.
+            put("max_tokens", 8192)
             put("response_format", buildJsonObject { put("type", "json_object") })
             put("messages", buildJsonArray {
                 add(buildJsonObject { put("role", "system"); put("content", system) })

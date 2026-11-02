@@ -98,7 +98,7 @@ PaceMate works with two AI providers. Both use the same OpenAI-style chat API:
 
 | Provider | Cost | Default model | Get a key |
 |---|---|---|---|
-| **Groq** (default) | Free tier, no card needed. Paid rates are a few cents per million tokens | `llama-3.3-70b-versatile` (cheapest option: `llama-3.1-8b-instant`) | <https://console.groq.com/keys> |
+| **Groq** (default) | Free tier, no card needed. Paid rates are a few cents per million tokens | `openai/gpt-oss-120b` (lighter option: `openai/gpt-oss-20b`) | <https://console.groq.com/keys> |
 | **Kimi** (Moonshot) | Paid only, roughly $0.60+ per million input tokens | `kimi-k2.6` | <https://platform.moonshot.ai/console/api-keys> |
 
 Pick the provider in the first onboarding step or in **Settings**, then paste the key. The model
