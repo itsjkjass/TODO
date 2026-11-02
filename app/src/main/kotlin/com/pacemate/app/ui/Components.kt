@@ -37,14 +37,18 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -82,7 +86,11 @@ fun PaceCard(
         Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(Space.md), content = content)
     }
     if (onClick != null) {
-        Card(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, colors = colors, border = stroke, content = inner)
+        val interaction = remember { MutableInteractionSource() }
+        Card(
+            onClick = onClick, modifier = modifier.fillMaxWidth().pressScale(interaction), shape = MaterialTheme.shapes.large,
+            colors = colors, border = stroke, interactionSource = interaction, content = inner,
+        )
     } else {
         Card(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, colors = colors, border = stroke, content = inner)
     }
@@ -153,8 +161,13 @@ fun ProgressRing(
     color: Color = MaterialTheme.colorScheme.primary,
     track: Color = PaceTheme.colors.track,
     description: String? = null,
+    /** Paint the progress arc with this instead of [color] (e.g. the brand gradient). */
+    brush: List<Color>? = null,
+    /** 0..1 strength of a soft halo behind the arc (animate it for a pulse). */
+    glow: Float = 0f,
     content: @Composable BoxScope.() -> Unit = {},
 ) {
+    val glowColor = PaceTheme.colors.glow
     val animated by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
         animationSpec = tween(Motion.LONG, easing = Motion.Emphasized),
@@ -170,10 +183,25 @@ fun ProgressRing(
             val arcSize = Size(this.size.width - px, this.size.height - px)
             drawArc(track, startAngle = 0f, sweepAngle = 360f, useCenter = false, topLeft = Offset(inset, inset), size = arcSize, style = Stroke(px))
             if (animated > 0f) {
-                drawArc(
-                    color, startAngle = -90f, sweepAngle = 360f * animated, useCenter = false,
-                    topLeft = Offset(inset, inset), size = arcSize, style = Stroke(px, cap = StrokeCap.Round),
-                )
+                if (glow > 0f) {
+                    drawArc(
+                        glowColor.copy(alpha = glowColor.alpha * glow), startAngle = -90f, sweepAngle = 360f * animated, useCenter = false,
+                        topLeft = Offset(inset, inset), size = arcSize, style = Stroke(px * 2.4f, cap = StrokeCap.Round),
+                    )
+                }
+                if (brush != null) {
+                    rotate(-90f) {
+                        drawArc(
+                            Brush.sweepGradient(brush + brush.first()), startAngle = 0f, sweepAngle = 360f * animated, useCenter = false,
+                            topLeft = Offset(inset, inset), size = arcSize, style = Stroke(px, cap = StrokeCap.Round),
+                        )
+                    }
+                } else {
+                    drawArc(
+                        color, startAngle = -90f, sweepAngle = 360f * animated, useCenter = false,
+                        topLeft = Offset(inset, inset), size = arcSize, style = Stroke(px, cap = StrokeCap.Round),
+                    )
+                }
             }
         }
         content()

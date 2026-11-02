@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import com.pacemate.app.ui.staggerIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.DateRange
@@ -99,14 +101,14 @@ fun PlanScreen(vm: AppViewModel) {
             return@LazyColumn
         }
 
-        item { WeekChart(state, today) }
+        item { Box(Modifier.staggerIn(0)) { WeekChart(state, today) } }
 
-        items(days.entries.toList(), key = { it.key }) { (date, list) ->
+        itemsIndexed(days.entries.toList(), key = { _, e -> e.key }) { index, (date, list) ->
             val d = LocalDate.parse(date)
             val limit = dayLimit(state, d)
             val total = list.sumOf { it.durationMinutes }
             val ratio = total.toFloat() / limit
-            PaceCard {
+            PaceCard(Modifier.staggerIn(index + 1)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(prettyDate(d), style = MaterialTheme.typography.titleMedium)

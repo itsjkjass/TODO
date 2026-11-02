@@ -39,6 +39,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,6 +59,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.pacemate.app.ui.AppViewModel
+import com.pacemate.app.ui.BrandAvatar
+import com.pacemate.app.ui.pulse
 import com.pacemate.app.ui.Eyebrow
 import com.pacemate.app.ui.PaceCard
 import com.pacemate.app.ui.ProgressRing
@@ -81,6 +85,7 @@ private val STEP_TITLES = listOf("Welcome", "Your day", "How you work", "Your go
 @Composable
 fun OnboardingScreen(vm: AppViewModel) {
     var step by rememberSaveable { mutableIntStateOf(0) }
+    var manualRoutine by rememberSaveable { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize()) {
         // Segmented progress: one bar per step.
@@ -111,16 +116,32 @@ fun OnboardingScreen(vm: AppViewModel) {
             },
             label = "onboarding",
         ) { s ->
-            Column(
-                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = Space.gutter, vertical = Space.lg),
-                verticalArrangement = Arrangement.spacedBy(Space.md),
-            ) {
-                when (s) {
-                    0 -> WelcomeStep(vm)
-                    1 -> DayStep(vm)
-                    2 -> PreferencesStep(vm)
-                    3 -> GoalsStep(vm)
-                    else -> PlanPreviewStep(vm)
+            if (s == 1 && !manualRoutine) {
+                // The chat has its own scrolling list, so it fills the step instead of nesting in a scroll view.
+                Column(Modifier.fillMaxSize().imePadding()) {
+                    Column(Modifier.padding(horizontal = Space.gutter).padding(top = Space.lg)) {
+                        StepTitle("Let's talk about your day", "Answer a few quick questions. I'll fill in your routine as we go.")
+                    }
+                    RoutineChat(vm, Modifier.weight(1f))
+                    TextButton(onClick = { manualRoutine = true }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                        Text("Prefer a form? Set it up manually")
+                    }
+                }
+            } else {
+                Column(
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = Space.gutter, vertical = Space.lg),
+                    verticalArrangement = Arrangement.spacedBy(Space.md),
+                ) {
+                    when (s) {
+                        0 -> WelcomeStep(vm)
+                        1 -> {
+                            DayStep(vm)
+                            TextButton(onClick = { manualRoutine = false }) { Text("Rather chat about it?") }
+                        }
+                        2 -> PreferencesStep(vm)
+                        3 -> GoalsStep(vm)
+                        else -> PlanPreviewStep(vm)
+                    }
                 }
             }
         }
@@ -166,8 +187,8 @@ private fun ColumnScope.WelcomeStep(vm: AppViewModel) {
     val state by vm.state.collectAsState()
 
     Box(Modifier.fillMaxWidth().padding(vertical = Space.lg), contentAlignment = Alignment.Center) {
-        ProgressRing(progress = 0.72f, size = 132.dp, stroke = 12.dp) {
-            Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
+        ProgressRing(progress = 0.72f, size = 148.dp, stroke = 14.dp, brush = PaceTheme.colors.gradient, glow = pulse()) {
+            BrandAvatar(size = 72.dp)
         }
     }
     Text("Plan at your pace.", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
@@ -207,8 +228,7 @@ private fun Bullet(text: String) {
 @Composable
 private fun DayStep(vm: AppViewModel) {
     val state by vm.state.collectAsState()
-    StepTitle("Your daily routine", "Describe it in your own words and let the AI fill it in, set it by hand, or both.")
-    DescribeDayCard(vm)
+    StepTitle("Your daily routine", "Set your times by hand. You can always fine-tune them later in Settings.")
     RoutineEditor(state.profile.routine) { r -> vm.updateProfile { it.copy(routine = r) } }
 }
 

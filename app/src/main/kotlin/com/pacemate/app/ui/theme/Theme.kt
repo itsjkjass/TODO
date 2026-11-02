@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -20,95 +21,109 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /*
- * PaceMate design system
- * ----------------------
- * Brand: calm teal for focus, warm orange for time and energy, indigo for deep work.
- * Every colour is a semantic token with separate light and dark values. Body text
- * has at least 4.5:1 contrast on its surface in both themes. Screens must read
- * colours from MaterialTheme.colorScheme / PaceTheme.colors, never raw hex.
+ * PaceMate design system: "Sunset energy"
+ * ---------------------------------------
+ * Warm coral -> pink -> orange gradients on a near-black (dark) or warm-white (light)
+ * canvas, with lime for success. The app follows the phone's light/dark setting.
+ *
+ * Contrast rules:
+ *  - Body text is at least 4.5:1 against its surface in both themes.
+ *  - Text on the brand gradient always uses [PaceColors.onGradient] (deep plum). White
+ *    text fails on the orange end of the gradient, so it is never used there.
+ *  - In light mode the solid primary is a deeper coral, so white button text passes 4.5:1.
+ * Screens read colours from MaterialTheme.colorScheme / PaceTheme.colors, never raw hex.
  */
 
-private val LightColors = lightColorScheme(
-    primary = Color(0xFF0F766E),
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFCCF5EC),
-    onPrimaryContainer = Color(0xFF032F2B),
-    inversePrimary = Color(0xFF5EEAD4),
-    secondary = Color(0xFFC2410C),
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFFFEAD5),
-    onSecondaryContainer = Color(0xFF431407),
-    tertiary = Color(0xFF4F46E5),
-    onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFE3E6FF),
-    onTertiaryContainer = Color(0xFF1E1B4B),
-    background = Color(0xFFF6F7F9),
-    onBackground = Color(0xFF0B1220),
-    surface = Color(0xFFF6F7F9),
-    onSurface = Color(0xFF0B1220),
-    surfaceVariant = Color(0xFFE6E9EE),
-    onSurfaceVariant = Color(0xFF475467),
-    surfaceTint = Color(0xFF0F766E),
-    inverseSurface = Color(0xFF1A212B),
-    inverseOnSurface = Color(0xFFF1F4F8),
-    error = Color(0xFFB42318),
-    onError = Color.White,
-    errorContainer = Color(0xFFFEE4E2),
-    onErrorContainer = Color(0xFF55160C),
-    outline = Color(0xFF8792A2),
-    outlineVariant = Color(0xFFDDE2E8),
-    scrim = Color.Black,
-    surfaceBright = Color(0xFFFFFFFF),
-    surfaceDim = Color(0xFFE2E6EB),
-    surfaceContainerLowest = Color(0xFFFFFFFF),
-    surfaceContainerLow = Color(0xFFFFFFFF),
-    surfaceContainer = Color(0xFFF0F2F5),
-    surfaceContainerHigh = Color(0xFFE9ECF0),
-    surfaceContainerHighest = Color(0xFFE2E6EB),
-)
+private val Coral = Color(0xFFFF6B6B)
+private val Pink = Color(0xFFF472B6)
+private val Orange = Color(0xFFFB923C)
+private val Plum = Color(0xFF1A0B10)
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFF4FD8C4),
-    onPrimary = Color(0xFF00332D),
-    primaryContainer = Color(0xFF0D4D46),
-    onPrimaryContainer = Color(0xFFCCF5EC),
-    inversePrimary = Color(0xFF0F766E),
-    secondary = Color(0xFFFF9F5A),
-    onSecondary = Color(0xFF451A03),
-    secondaryContainer = Color(0xFF6B2A0A),
-    onSecondaryContainer = Color(0xFFFFEAD5),
-    tertiary = Color(0xFFAAB4FF),
-    onTertiary = Color(0xFF1E1B4B),
-    tertiaryContainer = Color(0xFF34318A),
-    onTertiaryContainer = Color(0xFFE3E6FF),
-    background = Color(0xFF0B0F14),
-    onBackground = Color(0xFFE8ECF1),
-    surface = Color(0xFF0B0F14),
-    onSurface = Color(0xFFE8ECF1),
-    surfaceVariant = Color(0xFF232B35),
-    onSurfaceVariant = Color(0xFFA9B3C1),
-    surfaceTint = Color(0xFF4FD8C4),
-    inverseSurface = Color(0xFFE8ECF1),
-    inverseOnSurface = Color(0xFF151B22),
-    error = Color(0xFFFF8A80),
-    onError = Color(0xFF55160C),
-    errorContainer = Color(0xFF7A271A),
-    onErrorContainer = Color(0xFFFEE4E2),
-    outline = Color(0xFF6E7987),
-    outlineVariant = Color(0xFF2A333E),
+    primary = Coral,
+    onPrimary = Color(0xFF2A0A0C),
+    primaryContainer = Color(0xFF4A1D22),
+    onPrimaryContainer = Color(0xFFFFD9D6),
+    inversePrimary = Color(0xFFD23A4E),
+    secondary = Orange,
+    onSecondary = Color(0xFF2B1400),
+    secondaryContainer = Color(0xFF4A2A10),
+    onSecondaryContainer = Color(0xFFFFE1C7),
+    tertiary = Pink,
+    onTertiary = Color(0xFF2E0A1F),
+    tertiaryContainer = Color(0xFF4D1D37),
+    onTertiaryContainer = Color(0xFFFFD8EC),
+    background = Color(0xFF0F0B0E),
+    onBackground = Color(0xFFFFF5F5),
+    surface = Color(0xFF0F0B0E),
+    onSurface = Color(0xFFFFF5F5),
+    surfaceVariant = Color(0xFF2B2026),
+    onSurfaceVariant = Color(0xFFB8A9AE),
+    surfaceTint = Coral,
+    inverseSurface = Color(0xFFFFF5F5),
+    inverseOnSurface = Color(0xFF1C1519),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
+    outline = Color(0xFF7A6870),
+    outlineVariant = Color(0xFF3A2C33),
     scrim = Color.Black,
-    surfaceBright = Color(0xFF2A323C),
-    surfaceDim = Color(0xFF0B0F14),
-    surfaceContainerLowest = Color(0xFF070A0E),
-    surfaceContainerLow = Color(0xFF12171E),
-    surfaceContainer = Color(0xFF161C24),
-    surfaceContainerHigh = Color(0xFF1D242D),
-    surfaceContainerHighest = Color(0xFF252D37),
+    surfaceBright = Color(0xFF3A2C33),
+    surfaceDim = Color(0xFF0F0B0E),
+    surfaceContainerLowest = Color(0xFF0A0709),
+    surfaceContainerLow = Color(0xFF1C1519),
+    surfaceContainer = Color(0xFF231A1F),
+    surfaceContainerHigh = Color(0xFF2B2026),
+    surfaceContainerHighest = Color(0xFF33262D),
 )
 
-/** Status colours that Material doesn't name: load levels and outcomes. */
+private val LightColors = lightColorScheme(
+    primary = Color(0xFFD23A4E),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFFFE1E1),
+    onPrimaryContainer = Color(0xFF5A0E1A),
+    inversePrimary = Coral,
+    secondary = Color(0xFFC2410C),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFFFE7D3),
+    onSecondaryContainer = Color(0xFF4A1C04),
+    tertiary = Color(0xFFC2187A),
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFFFD9EC),
+    onTertiaryContainer = Color(0xFF4A0B2C),
+    background = Color(0xFFFFF8F6),
+    onBackground = Color(0xFF23161A),
+    surface = Color(0xFFFFF8F6),
+    onSurface = Color(0xFF23161A),
+    surfaceVariant = Color(0xFFF5DEDA),
+    onSurfaceVariant = Color(0xFF6B5A60),
+    surfaceTint = Color(0xFFD23A4E),
+    inverseSurface = Color(0xFF2B2026),
+    inverseOnSurface = Color(0xFFFFF5F5),
+    error = Color(0xFFBA1A1A),
+    onError = Color.White,
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
+    outline = Color(0xFFA08C92),
+    outlineVariant = Color(0xFFF0DCD8),
+    scrim = Color.Black,
+    surfaceBright = Color.White,
+    surfaceDim = Color(0xFFF2E2DE),
+    surfaceContainerLowest = Color.White,
+    surfaceContainerLow = Color.White,
+    surfaceContainer = Color(0xFFFFF1EE),
+    surfaceContainerHigh = Color(0xFFFBE8E4),
+    surfaceContainerHighest = Color(0xFFF5DEDA),
+)
+
+/** Colours Material doesn't name: gradient, load levels, outcomes. */
 @Immutable
 data class PaceColors(
+    /** Brand gradient stops: coral -> pink -> orange. */
+    val gradient: List<Color>,
+    /** Text/icons drawn on top of the brand gradient. */
+    val onGradient: Color,
     val calm: Color,
     val busy: Color,
     val heavy: Color,
@@ -117,28 +132,43 @@ data class PaceColors(
     val warningContainer: Color,
     val onWarningContainer: Color,
     val track: Color,
+    val glow: Color,
+    val userBubble: List<Color>,
+    val botBubble: Color,
+) {
+    val brush: Brush get() = Brush.linearGradient(gradient)
+}
+
+private val DarkPace = PaceColors(
+    gradient = listOf(Coral, Pink, Orange),
+    onGradient = Plum,
+    calm = Color(0xFFA3E635),
+    busy = Orange,
+    heavy = Color(0xFFFF5C7A),
+    success = Color(0xFFA3E635),
+    onSuccess = Color(0xFF1A2E05),
+    warningContainer = Color(0xFF4A2A10),
+    onWarningContainer = Color(0xFFFFE1C7),
+    track = Color(0xFF2E2329),
+    glow = Coral.copy(alpha = 0.35f),
+    userBubble = listOf(Coral, Pink),
+    botBubble = Color(0xFF231A1F),
 )
 
 private val LightPace = PaceColors(
-    calm = Color(0xFF0F766E),
-    busy = Color(0xFFB54708),
-    heavy = Color(0xFFB42318),
-    success = Color(0xFF067647),
+    gradient = listOf(Coral, Pink, Orange),
+    onGradient = Plum,
+    calm = Color(0xFF4D7C0F),
+    busy = Color(0xFFC2410C),
+    heavy = Color(0xFFBA1A1A),
+    success = Color(0xFF4D7C0F),
     onSuccess = Color.White,
-    warningContainer = Color(0xFFFEF0C7),
-    onWarningContainer = Color(0xFF4E1D09),
-    track = Color(0xFFE4E8ED),
-)
-
-private val DarkPace = PaceColors(
-    calm = Color(0xFF4FD8C4),
-    busy = Color(0xFFFDB022),
-    heavy = Color(0xFFFF8A80),
-    success = Color(0xFF47CD89),
-    onSuccess = Color(0xFF053321),
-    warningContainer = Color(0xFF4E2A06),
-    onWarningContainer = Color(0xFFFEF0C7),
-    track = Color(0xFF26303B),
+    warningContainer = Color(0xFFFFE7D3),
+    onWarningContainer = Color(0xFF4A1C04),
+    track = Color(0xFFF5E4E0),
+    glow = Coral.copy(alpha = 0.25f),
+    userBubble = listOf(Coral, Pink),
+    botBubble = Color(0xFFFFF1EE),
 )
 
 /** 4/8dp spacing rhythm. */
@@ -164,26 +194,27 @@ object Motion {
     const val SHORT = 150
     const val MEDIUM = 300
     const val LONG = 500
+    const val STAGGER = 45
 }
 
 private val PaceShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
     small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(24.dp),
-    extraLarge = RoundedCornerShape(32.dp),
+    medium = RoundedCornerShape(18.dp),
+    large = RoundedCornerShape(26.dp),
+    extraLarge = RoundedCornerShape(34.dp),
 )
 
-/** Tight, confident type scale. Numbers use tabular figures so timers don't jitter. */
+/** Bold, tight type scale. Numbers use tabular figures so counters don't jitter. */
 private val PaceTypography = Typography().run {
     copy(
-        displayLarge = displayLarge.copy(fontSize = 64.sp, lineHeight = 68.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-2).sp, fontFeatureSettings = "tnum"),
-        displayMedium = displayMedium.copy(fontSize = 48.sp, lineHeight = 52.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-1.5).sp, fontFeatureSettings = "tnum"),
-        displaySmall = displaySmall.copy(fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-1).sp, fontFeatureSettings = "tnum"),
-        headlineLarge = headlineLarge.copy(fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.8).sp),
-        headlineMedium = headlineMedium.copy(fontSize = 28.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp),
-        headlineSmall = headlineSmall.copy(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp),
-        titleLarge = titleLarge.copy(fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.2).sp),
+        displayLarge = displayLarge.copy(fontSize = 64.sp, lineHeight = 68.sp, fontWeight = FontWeight.Bold, letterSpacing = (-2.5).sp, fontFeatureSettings = "tnum"),
+        displayMedium = displayMedium.copy(fontSize = 52.sp, lineHeight = 56.sp, fontWeight = FontWeight.Bold, letterSpacing = (-2).sp, fontFeatureSettings = "tnum"),
+        displaySmall = displaySmall.copy(fontSize = 38.sp, lineHeight = 42.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1.2).sp, fontFeatureSettings = "tnum"),
+        headlineLarge = headlineLarge.copy(fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp),
+        headlineMedium = headlineMedium.copy(fontSize = 28.sp, lineHeight = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.7).sp),
+        headlineSmall = headlineSmall.copy(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp),
+        titleLarge = titleLarge.copy(fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp),
         titleMedium = titleMedium.copy(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
         titleSmall = titleSmall.copy(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
         bodyLarge = bodyLarge.copy(fontSize = 16.sp, lineHeight = 24.sp, letterSpacing = 0.sp),
@@ -191,14 +222,14 @@ private val PaceTypography = Typography().run {
         bodySmall = bodySmall.copy(fontSize = 12.sp, lineHeight = 17.sp, letterSpacing = 0.1.sp),
         labelLarge = labelLarge.copy(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.sp),
         labelMedium = labelMedium.copy(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.3.sp),
-        labelSmall = labelSmall.copy(fontSize = 11.sp, lineHeight = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp),
+        labelSmall = labelSmall.copy(fontSize = 11.sp, lineHeight = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
     )
 }
 
 /** Monospaced-width numerals for counters and times inside normal text styles. */
 val TabularNumbers = TextStyle(fontFeatureSettings = "tnum")
 
-private val LocalPaceColors = staticCompositionLocalOf { LightPace }
+private val LocalPaceColors = staticCompositionLocalOf { DarkPace }
 
 object PaceTheme {
     val colors: PaceColors
@@ -207,8 +238,6 @@ object PaceTheme {
 
 @Composable
 fun PaceMateTheme(content: @Composable () -> Unit) {
-    // A fixed brand palette (not wallpaper colours) keeps the product recognisable
-    // and keeps the status colours readable against known surfaces.
     val dark = isSystemInDarkTheme()
     val scheme: ColorScheme = if (dark) DarkColors else LightColors
     CompositionLocalProvider(LocalPaceColors provides if (dark) DarkPace else LightPace) {

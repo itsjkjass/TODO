@@ -15,7 +15,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import com.pacemate.app.ui.screens.ChatScreen
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DateRange
@@ -117,6 +124,8 @@ private fun Root(vm: AppViewModel) {
     val state by vm.state.collectAsState()
     val busy by vm.busy.collectAsState()
     val message by vm.message.collectAsState()
+    val celebrate by vm.celebrate.collectAsState()
+    val chatOpen by vm.chatOpen.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     var tab by rememberSaveable { mutableIntStateOf(0) }
 
@@ -127,6 +136,9 @@ private fun Root(vm: AppViewModel) {
         }
     }
 
+    BackHandler(enabled = chatOpen) { vm.closeChat() }
+
+    Box(Modifier.fillMaxSize()) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
@@ -186,5 +198,16 @@ private fun Root(vm: AppViewModel) {
                 }
             }
         }
+    }
+
+    // Full-screen routine chat slides up over everything.
+    AnimatedVisibility(
+        visible = chatOpen,
+        enter = slideInVertically(tween(Motion.MEDIUM, easing = Motion.EmphasizedDecelerate)) { it } + fadeIn(tween(Motion.MEDIUM)),
+        exit = slideOutVertically(tween(Motion.SHORT, easing = Motion.EmphasizedAccelerate)) { it } + fadeOut(tween(Motion.SHORT)),
+    ) { ChatScreen(vm) }
+
+    // Celebration burst when a block or step is finished.
+    ConfettiBurst(celebrate)
     }
 }

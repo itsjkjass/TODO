@@ -35,6 +35,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.unit.dp
 import com.pacemate.app.ui.AppViewModel
+import com.pacemate.app.ui.GradientHero
+import com.pacemate.app.ui.PaceIcons
+import androidx.compose.foundation.layout.size
 import com.pacemate.app.ui.PaceCard
 import com.pacemate.app.ui.ScreenHeader
 import com.pacemate.app.ui.SectionCard
@@ -90,7 +93,24 @@ fun SettingsScreen(vm: AppViewModel) {
         }
 
         SectionLabel("Your day")
-        DescribeDayCard(vm)
+        GradientHero(Modifier.fillMaxWidth(), onClick = { vm.openChat() }) {
+            Row(Modifier.padding(Space.xl), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Space.xs)) {
+                    Text("Talk me through your day", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "Changed jobs, new gym slot, different bedtime? Just chat and I'll update your routine.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                Icon(PaceIcons.Chat, contentDescription = null, modifier = Modifier.padding(start = Space.md).size(32.dp))
+            }
+        }
+        Text(
+            "Or adjust the details by hand:",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = Space.sm),
+        )
         RoutineEditor(state.profile.routine) { r -> vm.updateProfile { it.copy(routine = r) } }
 
         SectionLabel("Preferences")

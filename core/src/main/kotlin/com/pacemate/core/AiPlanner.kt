@@ -169,16 +169,24 @@ class AiPlanner(
     }
 
     /** One chat-completions call in JSON mode; returns the assistant's text. */
-    internal suspend fun chat(system: String, user: String): String = withContext(Dispatchers.IO) {
+    internal suspend fun chat(system: String, user: String): String = chatTurns(system, listOf(false to user))
+
+    /**
+     * Sends a whole conversation. Each pair is (fromAssistant, text).
+     * The last message must come from the user.
+     */
+    internal suspend fun chatTurns(system: String, turns: List<Pair<Boolean, String>>): String = withContext(Dispatchers.IO) {
         val body = buildJsonObject {
             put("model", model)
-            put("temperature", 0.3)
+            put("temperature", 0.4)
             // gpt-oss models reason before answering; leave room so the JSON isn't cut off.
             put("max_tokens", 8192)
             put("response_format", buildJsonObject { put("type", "json_object") })
             put("messages", buildJsonArray {
                 add(buildJsonObject { put("role", "system"); put("content", system) })
-                add(buildJsonObject { put("role", "user"); put("content", user) })
+                turns.forEach { (fromAssistant, text) ->
+                    add(buildJsonObject { put("role", if (fromAssistant) "assistant" else "user"); put("content", text) })
+                }
             })
         }
         val headers = mapOf(

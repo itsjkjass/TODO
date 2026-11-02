@@ -172,6 +172,21 @@ object StateOps {
         return done.toFloat() / total
     }
 
+    /**
+     * Days in a row (ending today, or yesterday if nothing is done yet today)
+     * with at least one finished block.
+     */
+    fun streak(state: AppState, today: LocalDate): Int {
+        val doneDays = state.sessions.filter { it.status == SessionStatus.DONE }.map { it.date }.toSet()
+        var day = if (today.toString() in doneDays) today else today.minusDays(1)
+        var n = 0
+        while (day.toString() in doneDays) {
+            n++
+            day = day.minusDays(1)
+        }
+        return n
+    }
+
     /** Subtask from a draft, with a fresh id. */
     fun subtaskFrom(d: SubtaskDraft) = Subtask(newId(), d.title.trim(), d.estimateMinutes, d.difficulty, d.notes)
 }

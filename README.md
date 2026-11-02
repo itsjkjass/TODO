@@ -6,7 +6,13 @@ you. A built-in logger times every task and notifies you when its time is up.
 
 ## What it does
 
-1. **Onboarding interview.** On first launch the app asks about:
+1. **Chat about your day.** Instead of filling in a form, you chat with PaceMate. It asks one
+   short question at a time (wake-up, bedtime, work hours, commute, energy, how much time you
+   want for your own tasks, focus length), offers tap-to-answer suggestions, and fills in your
+   routine live as you answer. With an AI key, Groq or Kimi run the conversation. Without one,
+   a built-in offline interviewer understands loose answers like "7ish", "9 to 5", "weekdays"
+   or "an hour". You can reopen the chat any time from Today or Settings.
+   The onboarding interview also covers:
    - your **daily routine**: wake and sleep times, meals, gym, classes, family time. You can
      describe your day in plain words and the AI fills in the fields for you.
    - your **working hours**: start and end time, work days, commute.

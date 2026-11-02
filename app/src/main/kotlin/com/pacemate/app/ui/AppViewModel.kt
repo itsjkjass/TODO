@@ -6,6 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.pacemate.app.PaceMateApp
 import com.pacemate.app.timer.TimerController
 import com.pacemate.core.AiException
+import com.pacemate.core.AiInterviewer
+import com.pacemate.core.ChatMessage
+import com.pacemate.core.RoutineDraft
+import com.pacemate.core.RoutineInterviewer
+import com.pacemate.core.ScriptedInterviewer
 import com.pacemate.core.AppState
 import com.pacemate.core.BreakdownResult
 import com.pacemate.core.AiPlanner
@@ -41,6 +46,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _apiKeySet = MutableStateFlow(settings.hasApiKey)
     val apiKeySet: StateFlow<Boolean> = _apiKeySet.asStateFlow()
+
+    private val _celebrate = MutableStateFlow(0)
+    /** Increments whenever the user finishes something worth celebrating. */
+    val celebrate: StateFlow<Int> = _celebrate.asStateFlow()
+    private fun celebrate() { _celebrate.value += 1 }
 
     fun consumeMessage() { _message.value = null }
     fun toast(text: String) { _message.value = text }
@@ -88,6 +98,94 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 _busy.value = null
             }
         }
+    }
+
+    // ---------- routine chat ----------
+
+    /** Everything the chat screen shows. */
+    data class ChatUi(
+        val messages: List<ChatMessage> = emptyList(),
+        val quickReplies: List<String> = emptyList(),
+        val thinking: Boolean = false,
+        val done: Boolean = false,
+        /** Fields learned so far in this conversation. */
+        val learned: RoutineDraft? = null,
+        val offline: Boolean = false,
+        val error: String? = null,
+    )
+
+    private val _chat = MutableStateFlow(ChatUi())
+    val chat: StateFlow<ChatUi> = _chat.asStateFlow()
+
+    private val _chatOpen = MutableStateFlow(false)
+    /** Full-screen routine chat (from Today / Settings). Onboarding embeds the chat instead. */
+    val chatOpen: StateFlow<Boolean> = _chatOpen.asStateFlow()
+
+    fun openChat() {
+        _chatOpen.value = true
+        startChatIfNeeded()
+    }
+
+    fun closeChat() { _chatOpen.value = false }
+
+    fun startChatIfNeeded() {
+        val c = _chat.value
+        if (c.messages.isEmpty() && !c.thinking) restartChat()
+    }
+
+    /** Starts over; uses the AI when a key is set, otherwise the offline interview. */
+    fun restartChat(forceOffline: Boolean = false) {
+        _chat.value = ChatUi(offline = forceOffline || !settings.hasApiKey)
+        requestTurn()
+    }
+
+    fun sendChat(raw: String) {
+        val text = raw.trim()
+        val c = _chat.value
+        if (text.isEmpty() || c.thinking) return
+        when {
+            c.error != null && text == RETRY -> { _chat.value = c.copy(error = null); requestTurn(); return }
+            c.error != null && text == GO_OFFLINE -> { restartChat(forceOffline = true); return }
+            c.done && text.equals("Looks right", ignoreCase = true) -> { acceptChat(); return }
+            c.done && c.offline && text.equals("Change something", ignoreCase = true) -> { restartChat(forceOffline = true); return }
+        }
+        _chat.value = c.copy(messages = c.messages + ChatMessage(true, text), quickReplies = emptyList(), error = null)
+        requestTurn()
+    }
+
+    private fun interviewer(offline: Boolean): RoutineInterviewer =
+        if (offline) ScriptedInterviewer else planner()?.let { AiInterviewer(it) } ?: ScriptedInterviewer
+
+    private fun requestTurn() {
+        val start = _chat.value
+        _chat.value = start.copy(thinking = true)
+        viewModelScope.launch {
+            try {
+                val turn = interviewer(start.offline).next(start.messages, repo.current.profile)
+                turn.draft?.let { d -> repo.update { s -> s.copy(profile = s.profile.merge(d)) } }
+                val c = _chat.value
+                _chat.value = c.copy(
+                    messages = c.messages + ChatMessage(false, turn.reply),
+                    quickReplies = turn.quickReplies,
+                    done = turn.done,
+                    learned = turn.draft ?: c.learned,
+                    thinking = false,
+                )
+            } catch (e: Exception) {
+                val msg = (e as? AiException)?.message ?: "Something went wrong: ${e.message}"
+                _chat.value = _chat.value.copy(thinking = false, error = msg, quickReplies = listOf(RETRY, GO_OFFLINE))
+            }
+        }
+    }
+
+    /** The user confirmed the routine: keep it, update the plan, close the chat. */
+    fun acceptChat() {
+        val c = _chat.value
+        _chat.value = c.copy(quickReplies = emptyList())
+        if (repo.current.onboarded) replan()
+        _chatOpen.value = false
+        toast("Routine saved. Your plan now fits around it.")
+        celebrate()
     }
 
     private fun mergeNotes(existing: String, text: String): String =
@@ -146,6 +244,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun completeSubtask(goalId: String, subtaskId: String) {
+        celebrate()
         val active = repo.current.activeTimer
         if (active != null && repo.current.sessions.any { it.id == active.sessionId && it.subtaskId == subtaskId }) {
             TimerController.stop(app, markDone = true)
@@ -175,9 +274,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     // ---------- timer ----------
 
     fun startTimer(sessionId: String) = TimerController.start(app, sessionId)
-    fun stopTimer(markDone: Boolean) = TimerController.stop(app, markDone)
+    fun stopTimer(markDone: Boolean) {
+        if (markDone) celebrate()
+        TimerController.stop(app, markDone)
+    }
+
     fun extendTimer() = TimerController.extend(app, 10)
-    fun markDone(sessionId: String) = TimerController.markDone(app, sessionId)
+
+    fun markDone(sessionId: String) {
+        celebrate()
+        TimerController.markDone(app, sessionId)
+    }
 
     fun skipSession(sessionId: String) {
         if (repo.current.activeTimer?.sessionId == sessionId) TimerController.stop(app, markDone = false)
@@ -188,7 +295,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun resetEverything() {
         TimerController.stop(app, markDone = false)
         repo.update { AppState() }
+        _chat.value = ChatUi()
         TimerController.rescheduleReminders(app)
+    }
+
+    companion object {
+        const val RETRY = "Try again"
+        const val GO_OFFLINE = "Use quick questions"
     }
 
     init {

@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -61,7 +62,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.pacemate.app.ui.AnimatedText
 import com.pacemate.app.ui.AppViewModel
+import com.pacemate.app.ui.GradientButton
+import com.pacemate.app.ui.GradientHero
+import com.pacemate.app.ui.PaceIcons
+import com.pacemate.app.ui.pulse
+import com.pacemate.app.ui.staggerIn
 import com.pacemate.app.ui.EmptyState
 import com.pacemate.app.ui.Eyebrow
 import com.pacemate.app.ui.PaceCard
@@ -113,13 +120,29 @@ fun TodayScreen(vm: AppViewModel) {
         verticalArrangement = Arrangement.spacedBy(Space.md),
     ) {
         item {
+            val streak = StateOps.streak(state, today)
+            Column {
             ScreenHeader(
                 title = greeting(state.profile.name),
                 eyebrow = longDate(today),
+                modifier = Modifier.staggerIn(0),
             ) {
+                IconButton(onClick = { vm.openChat() }) {
+                    Icon(PaceIcons.Chat, contentDescription = "Chat with PaceMate about your routine")
+                }
                 IconButton(onClick = { vm.replan(showMessage = true) }) {
                     Icon(Icons.Rounded.Refresh, contentDescription = "Re-plan my schedule")
                 }
+            }
+            if (streak > 0) {
+                StatusPill(
+                    "$streak-day streak",
+                    icon = PaceIcons.Flame,
+                    container = MaterialTheme.colorScheme.secondaryContainer,
+                    content = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.staggerIn(1),
+                )
+            }
             }
         }
 
@@ -134,11 +157,11 @@ fun TodayScreen(vm: AppViewModel) {
         }
 
         if (sessions.isNotEmpty()) {
-            item { DaySummary(planned, done, left, limit) }
+            item { DaySummary(planned, done, left, limit, Modifier.staggerIn(2)) }
         }
 
         if (upNext != null) {
-            item { UpNextCard(upNext, nowMinute) { vm.startTimer(upNext.id) } }
+            item { UpNextCard(upNext, nowMinute, Modifier.staggerIn(3)) { vm.startTimer(upNext.id) } }
         }
 
         if (state.planWarnings.isNotEmpty()) {
@@ -169,13 +192,14 @@ fun TodayScreen(vm: AppViewModel) {
             }
         } else {
             item { SectionLabel("Schedule") { Text("${sessions.size} blocks", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
-            items(sessions, key = { it.id }) { s ->
+            itemsIndexed(sessions, key = { _, it -> it.id }) { i, s ->
                 TimelineRow(
                     vm = vm,
                     state = state,
                     s = s,
                     isLast = s.id == sessions.last().id,
                     isNow = s.startMinute <= nowMinute && nowMinute < s.endMinute,
+                    modifier = Modifier.animateItem().staggerIn(4 + i),
                 )
             }
         }
@@ -207,35 +231,39 @@ private fun greeting(name: String): String {
 }
 
 @Composable
-private fun DaySummary(planned: Int, done: Int, left: Int, limit: Int) {
+private fun DaySummary(planned: Int, done: Int, left: Int, limit: Int, modifier: Modifier = Modifier) {
     val ratio = planned.toFloat() / limit
-    PaceCard {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.xl)) {
+    val on = PaceTheme.colors.onGradient
+    GradientHero(modifier.fillMaxWidth()) {
+        Row(
+            Modifier.padding(Space.xl),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Space.xl),
+        ) {
             ProgressRing(
                 progress = if (planned == 0) 0f else done.toFloat() / planned,
-                size = 104.dp,
-                stroke = 10.dp,
+                size = 108.dp,
+                stroke = 11.dp,
+                color = on,
+                track = on.copy(alpha = 0.16f),
                 description = "${Times.duration(done)} of ${Times.duration(planned)} done today",
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(Times.duration(done), style = MaterialTheme.typography.titleLarge.merge(TabularNumbers))
-                    Text("of ${Times.duration(planned)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    AnimatedText(Times.duration(done), MaterialTheme.typography.titleLarge.merge(TabularNumbers), color = on)
+                    Text("of ${Times.duration(planned)}", style = MaterialTheme.typography.bodySmall, color = on.copy(alpha = 0.75f))
                 }
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Space.sm)) {
-                StatusPill(
-                    loadLabel(ratio),
-                    container = loadColor(ratio).copy(alpha = 0.14f),
-                    content = loadColor(ratio),
-                )
-                Text(
-                    if (left == 0) "All done for today." else "$left block${if (left == 1) "" else "s"} to go",
-                    style = MaterialTheme.typography.titleMedium,
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Space.xs)) {
+                Eyebrow(loadLabel(ratio), color = on.copy(alpha = 0.8f))
+                AnimatedText(
+                    if (left == 0) "All done!" else "$left to go",
+                    MaterialTheme.typography.headlineMedium,
+                    color = on,
                 )
                 Text(
                     "Comfortable limit ${Times.duration(limit)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = on.copy(alpha = 0.75f),
                 )
             }
         }
@@ -243,9 +271,9 @@ private fun DaySummary(planned: Int, done: Int, left: Int, limit: Int) {
 }
 
 @Composable
-private fun UpNextCard(s: PlannedSession, nowMinute: Int, onStart: () -> Unit) {
+private fun UpNextCard(s: PlannedSession, nowMinute: Int, modifier: Modifier = Modifier, onStart: () -> Unit) {
     val startsIn = s.startMinute - nowMinute
-    PaceCard(container = MaterialTheme.colorScheme.primaryContainer, border = false) {
+    PaceCard(modifier = modifier, container = MaterialTheme.colorScheme.primaryContainer, border = false) {
         Eyebrow(
             when {
                 startsIn > 0 -> "Up next · in ${Times.duration(startsIn)}"
@@ -259,14 +287,10 @@ private fun UpNextCard(s: PlannedSession, nowMinute: Int, onStart: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
         )
-        Button(
-            onClick = onStart,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = MaterialTheme.shapes.medium,
-        ) {
+        GradientButton(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Rounded.PlayArrow, contentDescription = null)
             Spacer(Modifier.width(Space.sm))
-            Text("Start focus", style = MaterialTheme.typography.titleMedium)
+            Text("Start focus")
         }
     }
 }
@@ -294,9 +318,11 @@ fun TimerHero(vm: AppViewModel, s: PlannedSession, timer: ActiveTimer) {
             )
             ProgressRing(
                 progress = if (over) 1f else elapsedSec.toFloat() / totalSec,
-                size = 220.dp,
-                stroke = 14.dp,
+                size = 232.dp,
+                stroke = 16.dp,
                 color = accent,
+                brush = if (over) null else PaceTheme.colors.gradient,
+                glow = pulse(),
                 description = if (over) "Over planned time by ${clock(abs(remainingMs) / 1000)}" else "${clock(remainingMs / 1000)} left",
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -382,7 +408,7 @@ private fun rememberNow(key: Any): Long {
 }
 
 @Composable
-private fun TimelineRow(vm: AppViewModel, state: AppState, s: PlannedSession, isLast: Boolean, isNow: Boolean) {
+private fun TimelineRow(vm: AppViewModel, state: AppState, s: PlannedSession, isLast: Boolean, isNow: Boolean, modifier: Modifier = Modifier) {
     val active = state.activeTimer?.sessionId == s.id
     val done = s.status == SessionStatus.DONE
     val skipped = s.status == SessionStatus.SKIPPED
@@ -393,7 +419,7 @@ private fun TimelineRow(vm: AppViewModel, state: AppState, s: PlannedSession, is
         else -> MaterialTheme.colorScheme.outline
     }
 
-    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+    Row(modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
         // Time column
         Column(Modifier.width(52.dp).padding(top = Space.lg)) {
             Text(Times.format(s.startMinute), style = MaterialTheme.typography.labelLarge.merge(TabularNumbers))
