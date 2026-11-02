@@ -21,6 +21,22 @@ jobs:
       - name: Unit tests (planning engine)
         run: ./gradlew :core:test --console=plain
 
+      # Fixed signing key from repo secrets (see README). Without the secrets the
+      # build still works but uses a temporary key that changes every build.
+      - name: Set up signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.PACEMATE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.PACEMATE_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/pacemate.keystore"
+            echo "PACEMATE_KEYSTORE_FILE=$RUNNER_TEMP/pacemate.keystore" >> "$GITHUB_ENV"
+            echo "PACEMATE_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "Using the fixed PaceMate signing key."
+          else
+            echo "::warning::PACEMATE_KEYSTORE_BASE64 / PACEMATE_KEYSTORE_PASSWORD secrets not set - APK signed with a temporary key."
+          fi
+
       - name: Build APK
         run: ./gradlew :app:assembleDebug --console=plain
 

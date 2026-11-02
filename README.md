@@ -8,13 +8,13 @@ you. A built-in logger times every task and notifies you when its time is up.
 
 1. **Onboarding interview.** On first launch the app asks about:
    - your **daily routine**: wake and sleep times, meals, gym, classes, family time. You can
-     describe your day in plain words and Claude fills in the fields for you.
+     describe your day in plain words and the AI fills in the fields for you.
    - your **working hours**: start and end time, work days, commute.
    - your **preferences**: longest focus session, break length, when you have the most energy,
      how fast you usually work, how many task hours per day you're comfortable with,
      rest days, and how many days before a deadline you want to finish.
    - the **goals** you want to finish soon, each with a deadline.
-2. **AI breakdown.** Claude splits each goal into concrete steps, each with a realistic
+2. **AI breakdown.** The AI (Groq or Kimi) splits each goal into concrete steps, each with a realistic
    estimate for an average person and an effort level (light, normal or deep work).
    You can edit, add or remove steps. Without an API key, an offline breakdown is used.
 3. **Human-speed scheduling.** A deterministic planner (`core/Scheduler.kt`):
@@ -50,7 +50,7 @@ you. A built-in logger times every task and notifies you when its time is up.
 | Plan | Upcoming days, with a load bar against your comfortable limit |
 | Goals | Goals, steps, progress, and adding or editing goals with AI breakdown |
 | Log | Time actually spent per task, and your learned pace |
-| Settings | API key and model, reminders, routine and preferences, re-plan, reset |
+| Settings | AI provider, key and model, reminders, routine and preferences, re-plan, reset |
 
 ## Project layout
 
@@ -60,7 +60,7 @@ core/   Pure Kotlin/JVM planning engine (unit tested, no Android needed)
   PaceModel.kt     human-speed estimates and pace learning from the logger
   Scheduler.kt     turns goals into a stress-free calendar
   StateOps.kt      timer, logging, completion and re-planning rules
-  ClaudePlanner.kt Claude integration (official Anthropic Java SDK, structured JSON output)
+  AiPlanner.kt     Groq / Kimi integration (OpenAI-compatible chat API, JSON mode)
   Breakdown.kt     offline breakdown, routine parsing types, JSON config
 app/    Android app (Jetpack Compose, Material 3)
   data/            JSON-file repository and settings
@@ -94,18 +94,69 @@ Run the planning-engine tests on their own (no Android SDK needed):
 
 ## AI setup
 
-AI features use Claude through the official Anthropic SDK. In the first onboarding step
-(or later in Settings), paste an API key from <https://console.anthropic.com>. The default
-model is `claude-opus-5-5`, and you can change it in Settings. The key is stored only in the
-app's private storage on the phone. Without a key, everything still works: routine entry is
-manual and goals get a generic offline breakdown.
+PaceMate works with two AI providers. Both use the same OpenAI-style chat API:
 
-Notes:
-- Requests ask for JSON that matches a schema (structured outputs). The request also turns
-  on the server-side refusal fallback, so a request a safety classifier declines is retried
-  on a suitable model instead of failing.
-- For a production app, route requests through your own backend instead of putting the API
-  key on the device.
+| Provider | Cost | Default model | Get a key |
+|---|---|---|---|
+| **Groq** (default) | Free tier, no card needed. Paid rates are a few cents per million tokens | `llama-3.3-70b-versatile` (cheapest option: `llama-3.1-8b-instant`) | <https://console.groq.com/keys> |
+| **Kimi** (Moonshot) | Paid only, roughly $0.60+ per million input tokens | `kimi-k2.6` | <https://platform.moonshot.ai/console/api-keys> |
+
+Pick the provider in the first onboarding step or in **Settings**, then paste the key. The model
+name can be edited. If you get a "model not found" error, copy a current model name from your
+provider's console. Each provider keeps its own key and model.
+
+Without a key, everything still works: you enter your routine by hand and goals get a generic
+offline breakdown. The key is stored only in the app's private storage on the phone. If you ever
+publish the app, send requests through your own server instead of keeping the key on the device.
+
+## Signing key (so updates keep your data)
+
+Android only lets a new APK install over an old one when both were signed with the same key.
+The key is **not** stored in this repository, because the repository is public and anyone with
+the key could build an "update" your phone would accept. GitHub Actions reads it from two
+repository secrets instead. Until you add them, builds still work, but each one is signed with a
+new temporary key, so you have to uninstall before installing a newer build.
+
+One-time setup (on a computer with Java or Android Studio installed):
+
+1. Create the key. Choose a strong password and keep both the file and the password somewhere safe.
+   If you lose the key, installed copies can't be updated any more.
+
+   ```bash
+   keytool -genkeypair -keystore pacemate.keystore -storetype PKCS12 -alias pacemate -keyalg RSA -keysize 4096 -validity 36500 -dname "CN=PaceMate"
+   ```
+
+2. Convert it to text. On macOS or Linux:
+
+   ```bash
+   base64 -w0 pacemate.keystore > pacemate.b64
+   ```
+
+   On Windows (PowerShell):
+
+   ```bash
+   [Convert]::ToBase64String([IO.File]::ReadAllBytes("pacemate.keystore")) > pacemate.b64
+   ```
+
+3. On GitHub, open the repository's **Settings → Secrets and variables → Actions → New repository
+   secret** and add:
+   - `PACEMATE_KEYSTORE_BASE64`: the full contents of `pacemate.b64`
+   - `PACEMATE_KEYSTORE_PASSWORD`: the password from step 1
+4. Re-run the latest workflow, or push any change. The build log shows
+   "Using the fixed PaceMate signing key".
+
+The first APK signed with the fixed key needs one last uninstall of any older PaceMate. After that,
+every new build installs over it and keeps your data.
+
+To sign local builds the same way, put the keystore in `app/` and create `app/keystore.properties`.
+The file is git-ignored.
+
+```
+storeFile=pacemate.keystore
+storePassword=YOUR_PASSWORD
+keyAlias=pacemate
+keyPassword=YOUR_PASSWORD
+```
 
 ## Permissions
 
@@ -113,4 +164,4 @@ Notes:
 - `USE_EXACT_ALARM` / `SCHEDULE_EXACT_ALARM`: lets the "time's up" alert fire on the minute.
   If exact alarms aren't allowed, the app falls back to inexact alarms.
 - `RECEIVE_BOOT_COMPLETED`: restores the running timer and reminders after a reboot.
-- `INTERNET`: Claude API calls.
+- `INTERNET`: AI API calls (Groq or Kimi).

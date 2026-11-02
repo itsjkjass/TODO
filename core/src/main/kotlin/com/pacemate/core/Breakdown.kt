@@ -64,7 +64,7 @@ object OfflineBreakdowner : GoalBreakdowner {
         steps += SubtaskDraft("Final check and wrap up", wrap, 1)
         return BreakdownResult(
             steps, guessCategory(request),
-            "Offline breakdown (add an Anthropic API key in Settings for a tailored, AI-made plan).",
+            "Offline breakdown (add a free Groq API key in Settings for a tailored, AI-made plan).",
         )
     }
 

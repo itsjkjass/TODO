@@ -8,7 +8,8 @@ import com.pacemate.app.timer.TimerController
 import com.pacemate.core.AiException
 import com.pacemate.core.AppState
 import com.pacemate.core.BreakdownResult
-import com.pacemate.core.ClaudePlanner
+import com.pacemate.core.AiPlanner
+import com.pacemate.core.AiProvider
 import com.pacemate.core.Goal
 import com.pacemate.core.GoalRequest
 import com.pacemate.core.OfflineBreakdowner
@@ -44,14 +45,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun consumeMessage() { _message.value = null }
     fun toast(text: String) { _message.value = text }
 
-    private fun planner(): ClaudePlanner? =
-        if (settings.hasApiKey) ClaudePlanner(settings.apiKey, settings.model) else null
+    private fun planner(): AiPlanner? =
+        if (settings.hasApiKey) AiPlanner(settings.provider, settings.apiKey(), settings.model()) else null
 
     // ---------- settings ----------
 
-    fun saveApiKey(key: String, model: String) {
-        settings.apiKey = key
-        settings.model = model
+    fun saveAi(provider: AiProvider, key: String, model: String) {
+        settings.saveAi(provider, key, model)
         _apiKeySet.value = settings.hasApiKey
     }
 
@@ -68,7 +68,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Uses the AI to read a free-text description of the user's day into routine fields. */
     fun fillRoutineFromText(text: String) {
-        val p = planner() ?: run { toast("Add your Anthropic API key first, or fill the fields below by hand."); return }
+        val p = planner() ?: run { toast("Add a Groq or Kimi API key first (Settings), or fill the fields below by hand."); return }
         if (text.isBlank()) { toast("Describe your typical day first."); return }
         viewModelScope.launch {
             _busy.value = "Reading your routine…"

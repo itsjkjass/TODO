@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -13,16 +15,38 @@ android {
         applicationId = "com.pacemate.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
+    }
+
+    // Fixed signing key, so every new build installs over the old one and keeps your data.
+    // The key is never committed. It comes from either:
+    //  - CI: env vars set by the workflow from the repo secrets
+    //    PACEMATE_KEYSTORE_BASE64 and PACEMATE_KEYSTORE_PASSWORD, or
+    //  - local builds: app/keystore.properties (git-ignored) next to the keystore file.
+    val localProps = rootProject.file("app/keystore.properties").takeIf { it.exists() }
+        ?.let { f -> Properties().apply { f.inputStream().use { load(it) } } }
+    val keystorePath = System.getenv("PACEMATE_KEYSTORE_FILE") ?: localProps?.getProperty("storeFile")
+    val keystorePassword = System.getenv("PACEMATE_KEYSTORE_PASSWORD") ?: localProps?.getProperty("storePassword")
+    val fixedSigning = if (!keystorePath.isNullOrBlank() && !keystorePassword.isNullOrBlank()) {
+        signingConfigs.create("fixed") {
+            storeFile = file(keystorePath)
+            storePassword = keystorePassword
+            keyAlias = System.getenv("PACEMATE_KEY_ALIAS") ?: localProps?.getProperty("keyAlias") ?: "pacemate"
+            keyPassword = System.getenv("PACEMATE_KEY_PASSWORD") ?: localProps?.getProperty("keyPassword") ?: keystorePassword
+        }
+    } else {
+        logger.warn("PaceMate: no fixed signing key configured; using a temporary debug key.")
+        null
     }
 
     buildTypes {
+        debug {
+            if (fixedSigning != null) signingConfig = fixedSigning
+        }
         release {
             isMinifyEnabled = false
-            // Signed with the debug key so the release APK installs directly.
-            // Replace with your own signing config before publishing to Play.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = fixedSigning ?: signingConfigs.getByName("debug")
         }
     }
 

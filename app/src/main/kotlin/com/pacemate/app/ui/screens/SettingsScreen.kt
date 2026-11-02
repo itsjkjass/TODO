@@ -26,7 +26,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.pacemate.app.ui.AppViewModel
 import com.pacemate.app.ui.SectionCard
@@ -34,8 +33,6 @@ import com.pacemate.app.ui.SectionCard
 @Composable
 fun SettingsScreen(vm: AppViewModel) {
     val state by vm.state.collectAsState()
-    var key by remember { mutableStateOf(vm.settings.apiKey) }
-    var model by remember { mutableStateOf(vm.settings.model) }
     var reminders by remember { mutableStateOf(vm.settings.startReminders) }
     var confirmReset by remember { mutableStateOf(false) }
 
@@ -50,14 +47,7 @@ fun SettingsScreen(vm: AppViewModel) {
             Text("Save & re-plan")
         }
 
-        SectionCard("AI (Claude)", subtitle = "Used to read your routine and break goals into realistic steps.") {
-            OutlinedTextField(
-                key, { key = it }, Modifier.fillMaxWidth(), singleLine = true,
-                label = { Text("Anthropic API key") }, visualTransformation = PasswordVisualTransformation(),
-            )
-            OutlinedTextField(model, { model = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Model") })
-            OutlinedButton(onClick = { vm.saveApiKey(key, model); vm.toast("AI settings saved") }) { Text("Save AI settings") }
-        }
+        AiSettingsCard(vm, autoSave = false)
 
         SectionCard("Notifications") {
             Row(verticalAlignment = Alignment.CenterVertically) {

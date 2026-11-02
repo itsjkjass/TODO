@@ -34,7 +34,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.pacemate.app.ui.AppViewModel
 import com.pacemate.app.ui.SectionCard
@@ -85,8 +84,6 @@ fun OnboardingScreen(vm: AppViewModel) {
 @Composable
 private fun WelcomeStep(vm: AppViewModel) {
     val state by vm.state.collectAsState()
-    var key by remember { mutableStateOf(vm.settings.apiKey) }
-    var model by remember { mutableStateOf(vm.settings.model) }
 
     Text("Hi! I'm PaceMate.", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
     Text(
@@ -99,17 +96,7 @@ private fun WelcomeStep(vm: AppViewModel) {
     SectionCard("What should I call you?") {
         OutlinedTextField(state.profile.name, { n -> vm.updateProfile { it.copy(name = n) } }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Name") })
     }
-    SectionCard(
-        "AI planning (optional)",
-        subtitle = "Paste an Anthropic API key to let Claude read your routine and break goals into realistic steps. " +
-            "Without a key the app still works with a simpler offline planner. The key stays on this phone.",
-    ) {
-        OutlinedTextField(
-            key, { key = it; vm.saveApiKey(it, model) }, Modifier.fillMaxWidth(), singleLine = true,
-            label = { Text("Anthropic API key") }, visualTransformation = PasswordVisualTransformation(),
-        )
-        OutlinedTextField(model, { model = it; vm.saveApiKey(key, it) }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Model") })
-    }
+    AiSettingsCard(vm, autoSave = true)
 }
 
 @Composable
